@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    id="Capa_1"
    enable-background="new 0 0 512 512"
    height="512"
    viewBox="0 0 512 512"
    width="512"
    version="1.1"
-   sodipodi:docname="logo.svg"
-   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)">
+   sodipodi:docname="photo_interimBot.svg"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <metadata
      id="metadata61">
     <rdf:RDF>
@@ -23,7 +23,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -45,23 +45,24 @@
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:window-width="1920"
-     inkscape:window-height="1026"
+     inkscape:window-height="1020"
      id="namedview57"
      showgrid="false"
      inkscape:zoom="1.4277344"
-     inkscape:cx="283.91803"
-     inkscape:cy="267.29437"
+     inkscape:cx="284.36662"
+     inkscape:cy="267.55677"
      inkscape:window-x="0"
      inkscape:window-y="28"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g54" />
+     inkscape:current-layer="g54"
+     inkscape:pagecheckerboard="0" />
   <g
      id="g54">
     <g
        id="g1184"
        inkscape:export-xdpi="257.11237"
        inkscape:export-ydpi="257.11237"
-       transform="matrix(0.97667271,0,0,0.9765625,81.744652,95.027267)">
+       transform="matrix(0.97667271,0,0,0.9765625,3.5478339,0.53389485)">
       <g
          id="g1155"
          transform="translate(77.86768,-27.95973)">
