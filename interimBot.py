@@ -24,6 +24,7 @@ from openpyxl import Workbook
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from hashlib import md5
 
 # les erreurs critiques
 class Exit(Exception):
@@ -71,7 +72,7 @@ class obj_bdd():
 			listeTable = [k[0] for k in self.cursor.fetchall()]
 			# si la table n'existe pas, on la crée
 			if self.tableName not in listeTable:
-				self.cursor.execute(f"CREATE TABLE IF NOT EXISTS '{BDD_TABLE}' ('agence' TEXT, 'date' TEXT PRIMARY KEY, 'lieu' TEXT, 'heure_debut' TEXT, 'heure_fin' TEXT)")
+				self.cursor.execute(f"CREATE TABLE IF NOT EXISTS '{BDD_TABLE}' ('id' TEXT PRIMARY KEY, 'username' TEXT, 'agence' TEXT, 'date' TEXT, 'lieu' TEXT, 'heure_debut' TEXT, 'heure_fin' TEXT)")
 			# enregistrement de la clef primaire
 			self.primaryKey = None
 			self.cursor.execute(f"PRAGMA table_info({self.tableName})")
@@ -103,23 +104,14 @@ class obj_bdd():
 	def cursor(self):
 		return self._cursor
 
-	# recuperer les infos pour une entrée de clef primaire donnée. Si c'est "all", renvoit la totalité des données de la table
-	def getDatas(self, key):
-		if key == "all":
-			self.cursor.execute(f"SELECT * FROM {self.tableName} ORDER BY {self.primaryKey} ASC")
-			return self.cursor.fetchall()
-		else:
-			self.cursor.execute(f"SELECT * FROM {self.tableName} WHERE {self.primaryKey} LIKE '{key}'")
-			return self.cursor.fetchone()
-
 	# récupere les noms des champs de la table
-	def namesColonnes(self):
+	def _namesColonnes(self):
 		self.cursor.execute(f"PRAGMA table_info({self.tableName})")
 		L = [k[1] for k in self.cursor.fetchall()]
 		return L
 
 	# renvois True si l'entrée de la clef primaire est bien présente dans la table
-	def verify(self, key, prefixe, suffixe):
+	def _verify(self, key, prefixe, suffixe):
 		# si prefixe et suffixe valent False, la clef doit exactement etre présente
 		if not prefixe and not suffixe:
 			self.cursor.execute(f"SELECT {self.primaryKey} FROM {self.tableName} WHERE {self.primaryKey} LIKE '{key}'")
@@ -139,11 +131,24 @@ class obj_bdd():
 		else:
 			return True
 
+	# recuperer les infos pour une entrée de clef (primaire par défaut) donnée. Si c'est "all", renvoit la totalité des données de la table
+	def getDatas(self, username, key, keyname=None, order="date"):
+		if not keyname:
+			keyname = self.primaryKey
+		if key == "all":
+			self.cursor.execute(f"SELECT * FROM {self.tableName} WHERE username LIKE '{username}' ORDER BY {order} ASC")
+			return self.cursor.fetchall()
+		else:
+			self.cursor.execute(f"SELECT * FROM {self.tableName} WHERE username LIKE '{username}' AND {keyname} LIKE '{key}'")
+			return self.cursor.fetchone()
+
 	# ajoute une nouvelle entrée dans la base de données
-	def create(self, valeurs, lower):
-		nomsColonnes = self.namesColonnes()
+	def create(self, valeurs, lower=True):
+		nomsColonnes = self._namesColonnes()
+		if len(valeurs) != len(nomsColonnes):
+			raise Exit(f"[!] les arguments {valeurs} ne correspondent pas au colonnes {nomsColonnes}")
 		# on vérifie que l'entrée n'existe pas déja
-		if not self.verify(valeurs[self.primaryKeyIndex], False, False):
+		if not self._verify(valeurs[self.primaryKeyIndex], False, False):
 			text = f"INSERT INTO {self.tableName}("
 			for k in nomsColonnes:
 				text += f"{k},"
@@ -166,16 +171,18 @@ class obj_bdd():
 	# supprime une entrée en la selectionnant avec la clef primaire
 	def delete(self, key):
 		# on vérifie que l'entrée existe
-		if self.verify(key, False, False):
+		if self._verify(key, False, False):
 			self.cursor.execute(f"DELETE FROM {self.tableName} WHERE {self.primaryKey}='{key}'")
 		else:
 			raise Exit(f"[!] {self.primaryKey} = {key}, pas d'entrée corespondante")
 
 	# modifie une entrée en la selectionnant avec la clef primaire (dans le champ valeurs)
 	def modify(self, valeurs, lower):
-		nomsColonnes = self.namesColonnes()
+		nomsColonnes = self._namesColonnes()
+		if len(valeurs) != len(nomsColonnes):
+			raise Exit(f"[!] les arguments {valeurs} ne correspondent pas au colonnes {nomsColonnes}")
 		# on vérifie que l'entrée existe
-		if self.verify(valeurs[self.primaryKeyIndex], False, False):
+		if self._verify(valeurs[self.primaryKeyIndex], False, False):
 			text = f"UPDATE {self.tableName} SET"
 			for k in range(len(nomsColonnes)):
 				if lower:
@@ -198,45 +205,6 @@ class obj_bdd():
 	def close(self):
 		self.cursor.close()
 		self.connection.close()
-
-# utilise la classe obj_bdd pour lancer la methode : obj_bdd.commande(args)
-def interact_bdd(path, tableName, commande, args=None, lower=True):
-	s = None
-	bdd = obj_bdd(path, tableName)
-
-	if commande == "getDatas":
-		if args is None or type(args) != str:
-			raise Exit("[!] la commande 'getDatas' a besoin d'une clef primaire en argument")
-		s = bdd.getDatas(args)
-
-	elif commande == "verify":
-		if args is None or not type(args) in [list,tuple] or len(args) != 3:
-			raise Exit("[!] la commande 'verify' a besoin en argument de [clef primaire, prefixe(True/False), suffixe(True/False)]")
-		s = bdd.verify(args[0], args[1], args[2])
-
-	elif commande == "create":
-		if args is None or not type(args) in [list,tuple] or len(args) != len(bdd.namesColonnes()):
-			raise Exit(f"[!] la commande 'create' a besoin en arguments de {bdd.namesColonnes()}\nargument optionnel: lower [True/False]")
-		bdd.create(args, lower)
-		bdd.save()
-
-	elif commande == "delete":
-		if args is None or type(args) != str:
-			raise Exit("[!] la commande 'delete' a besoin d'une clef primaire en argument")
-		bdd.delete(args)
-		bdd.save()
-
-	elif commande == "modify":
-		if args is None or not type(args) in [list,tuple] or len(args) != len(bdd.namesColonnes()):
-			raise Exit(f"[!] la commande 'modify' a besoin en arguments de {bdd.namesColonnes()}argument optionnel: lower [True/False]")
-		bdd.modify(args, lower)
-		bdd.save()
-
-	else:
-		raise Exit(f"[!] la commande {commande} n'existe pas\nLes commandes possibles sont : \n verify\n getDatas\n getDatasSimilars\n getDatasInterval\n create\n delete\n modify\n passCommand\n")
-
-	bdd.close()
-	return s
 
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~	FILTRE MESSAGE PERSO   ~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
@@ -276,40 +244,49 @@ class filtres_perso:
 
 # renvois sous forme lisible une ligne de la base de donnée
 def bdd_to_string(extrait, mode="normal"):
+	# structure de la abse de donnée
+	#  - 0 : id
+	#  - 1 : username
+	#  - 2 : entreprise
+	#  - 3 : date
+	#  - 4 : lieu
+	#  - 5 : date début
+	#  - 6 : date fin
+
 	# si mode normal
 	if mode == "normal":
 		msg = " - ({}) {} à {}, de {} à {}".format(
-			extrait[0],
-			dt.strptime(extrait[1], "%Y/%m/%d").strftime("%a %-d %B"),
 			extrait[2],
-			extrait[3],
-			extrait[4])
+			dt.strptime(extrait[3], "%Y/%m/%d").strftime("%a %-d %B"),
+			extrait[4],
+			extrait[5],
+			extrait[6])
 	# si mode récapitulatif
 	elif mode == "recapitulatif":
 		msg = "({}) {} à {}, de {} à {}".format(
-			extrait[0],
-			dt.strptime(extrait[1], "%Y/%m/%d").strftime("%a %-d %B"),
 			extrait[2],
-			extrait[3],
-			extrait[4])
+			dt.strptime(extrait[3], "%Y/%m/%d").strftime("%a %-d %B"),
+			extrait[4],
+			extrait[5],
+			extrait[6])
 	# si mode mail
 	elif mode == "mail":
 		msg = "- {} à {}, de {} à {}".format(
-			dt.strptime(extrait[1], "%Y/%m/%d").strftime("%a %-d %B"),
-			extrait[2],
-			extrait[3],
-			extrait[4])
+			dt.strptime(extrait[3], "%Y/%m/%d").strftime("%a %-d %B"),
+			extrait[4],
+			extrait[5],
+			extrait[6])
 	# si mode raccourci
 	elif mode == "court":
 		msg = "{} à {}".format(
-			dt.strptime(extrait[1], "%Y/%m/%d").strftime("%a %-d %B"),
-			extrait[2])
+			dt.strptime(extrait[3], "%Y/%m/%d").strftime("%a %-d %B"),
+			extrait[4])
 	# si mode affichant seulement la clef primaire
 	elif mode == "id":
-		msg = extrait[1]
+		msg = extrait[0]
 
 	else:
-		print("[!] mode inconnu d'afficahge", mode)
+		print(f"[!] mode inconnu d'affichage : {mode}")
 
 	return msg
 
@@ -385,16 +362,23 @@ class conv_nouvelleMission():
 		global TO_SAVE
 		# enregistrement de l'heure de fin
 		TO_SAVE.append(dt.strptime(update.message.text, "%H %M").strftime("%H:%M"))
+		# ajout d'un id unique et du nom d'utilisateur
+		TO_SAVE = [
+			md5(f"{TO_SAVE[0]}_{TO_SAVE[1]}_{update.effective_user.username}".encode()).hexdigest(),
+			update.effective_user.username,
+		] + TO_SAVE
 		# un petit récapitulatif
-		update.message.reply_text(f"récapitulatif :\n{bdd_to_string(TO_SAVE, "recapitulatif")}")
+		update.message.reply_text(f"récapitulatif :\n{bdd_to_string(TO_SAVE, 'recapitulatif')}")
 		# sauvegarde de ces informations dans la base de donnée
 		try:
-			interact_bdd(BDD_PATH, BDD_TABLE, "create", TO_SAVE)
+			with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+				temp_bdd.create(TO_SAVE)
 			# réponse pour dire que tout va bien
 			update.message.reply_text("ok c'est bien enregistré")
+			print(f"created : {bdd_to_string(TO_SAVE, 'recapitulatif')}")
 		except Exit as e:
 			# réponse pour dire qu'il y a eu une erreur
-			print(e) #update.message.reply_text(f"code d'erreur : {e}")
+			print("conversation create.f_hFin_sauvegarde", e) #update.message.reply_text(f"code d'erreur : {e}")
 
 		# remise a zéro des constantes
 		TO_SAVE = []
@@ -417,7 +401,8 @@ class conv_nouvelleMission():
 # affiche les missions enregistrées dans la base de donnée
 def affiche_missions(update, context):
 	# toutes les données de la table et tri chronologique
-	temp = interact_bdd(BDD_PATH, BDD_TABLE, "getDatas", "all")
+	with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+		temp = temp_bdd.getDatas(update.effective_user.username, "all")
 	# si la base de donnée n'est pas vide
 	if len(temp) > 0:
 		msg = "toutes les missions enregistrées :\n"
@@ -434,10 +419,11 @@ def supprime_mission(update, context):
 	# le clavuer inline qu'on va remplir
 	keyboard = []
 	# toutes les données de la table et tri chronologique
-	temp = interact_bdd(BDD_PATH, BDD_TABLE, "getDatas", "all")
+	with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+		temp_datas = temp_bdd.getDatas(update.effective_user.username, "all")
 	# on les mets dans le lavier inline en colonne
-	for k in range(len(temp)):
-		keyboard.append([InlineKeyboardButton(bdd_to_string(temp[k], "court"), callback_data="s_"+bdd_to_string(temp[k], "id"))])
+	for k in range(len(temp_datas)):
+		keyboard.append([InlineKeyboardButton(bdd_to_string(temp_datas[k], "court"), callback_data="s_"+bdd_to_string(temp_datas[k], "id"))])
 
 	# la ligne pour annuler
 	keyboard.append([InlineKeyboardButton("annuler", callback_data="s_annuler")])
@@ -456,18 +442,19 @@ def horaires_mail(update, context):
 	mail_to = REGEX_MAIL_TO.findall(txt)[0][8:]
 	del txt
 	# toutes les données de la table et tri chronologique
-	temp = interact_bdd(BDD_PATH, BDD_TABLE, "getDatas", "all")
+	with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+		temp = temp_bdd.getDatas(update.effective_user.username, "all")
 	# on crée les deux textes pour les deux agences
 	text_adecco = ""
 	text_appelMedical = ""
 	# répartition des mission de la base de donnée en fonction des agences
 	for k in temp:
-		if k[0] == "appel medical":
+		if k[2] == "appel medical":
 			text_appelMedical += bdd_to_string(k, "mail") + "\n"
-		elif k[0] == "adecco":
+		elif k[2] == "adecco":
 			text_adecco += bdd_to_string(k, "mail") + "\n"
 		else:
-			print("[!] agence inconnue :", k)
+			print(f"[!] agence inconnue : {k}")
 
 	# rédaction du message
 	message = MIMEMultipart("alternative")
@@ -489,6 +476,7 @@ Bonjour,\n
 veuillez trouver ci-joint les horaires réelles des missions que j'ai effectuée :\n
 {text_adecco}
 Cordialement,
+{update.effective_user.first_name}
 
 -------------------------
 bot TELEGRAM @missions_interim_bot
@@ -507,7 +495,7 @@ by mgl corp."""
 		update.message.reply_text("mail envoyé")
 	# si un problème
 	except Exception as e:
-		print(e)
+		print("fonction horaire_mail", e)
 		update.message.reply_text(f"erreur dans l'envoi du mail :\n{e}")
 	finally:
 		del server_name
@@ -519,7 +507,8 @@ by mgl corp."""
 # exporte toutes les missions enregistrées dans un fichier excel
 def exporte_excel(update, context):
 	# nombre de lignes (toutes les données de la table)
-	nb_lignes = len(interact_bdd(BDD_PATH, BDD_TABLE, "getDatas", "all"))
+	with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+		nb_lignes = len(temp_bdd.getDatas(update.effective_user.username, "all"))
 	# si la base de donnée est vide
 	if nb_lignes == 0:
 		update.message.reply_text("pas de mission enregistrées")
@@ -544,12 +533,14 @@ def button(update, context):
 			query.edit_message_text(text="annulé")
 		else:
 			try:
-				interact_bdd(BDD_PATH, BDD_TABLE, "delete", query.data[2:])
+				with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+					temp_bdd.delete(query.data[2:])
 				# réponse au client (obligatoire sinon bug sur certains clients)
 				query.edit_message_text(text="mission supprimée")
+				print(f"deleted : {query.data[2:]}")
 			except Exit as e:
 				# réponse pour dire qu'il y a eu une erreur
-				print(e) #query.edit_message_text(text=f"code d'erreur : {e}")
+				print("fonction button.supprime", e) #query.edit_message_text(text=f"code d'erreur : {e}")
 
 	# si la query commence par 'e', on exporte les missions
 	elif query.data[:2] == "e_":
@@ -562,15 +553,16 @@ def button(update, context):
 		# si c'est le code de continuation
 		if query.data[2:] == "continuer":
 			# toutes les données de la table et tri chronologique
-			temp = interact_bdd(BDD_PATH, BDD_TABLE, "getDatas", "all")
+			with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+				temp = temp_bdd.getDatas(update.effective_user.username, "all")
 			# on crée les deux listes pour les deux agences
 			list_adecco = []
 			list_appelMedical = []
 			# répartition des mission de la base de donnée en fonction des agences
 			for k in temp:
-				if k[0] == "appel medical":
+				if k[2] == "appel medical":
 					list_appelMedical.append(k)
-				elif k[0] == "adecco":
+				elif k[2] == "adecco":
 					list_adecco.append(k)
 				else:
 					print("[!] agence inconnue :", k)
@@ -587,10 +579,10 @@ def button(update, context):
 					row[0].value = "appel medical"
 				else:
 					# mise en forme compréhensible par excel des données
-					row[0].value = dt.strptime(list_appelMedical[i][1], "%Y/%m/%d").strftime("%d/%m/%Y")
-					row[1].value = list_appelMedical[i][2]
-					row[4].value = list_appelMedical[i][3]
-					row[5].value = list_appelMedical[i][4]
+					row[0].value = dt.strptime(list_appelMedical[i][3], "%Y/%m/%d").strftime("%d/%m/%Y")
+					row[1].value = list_appelMedical[i][4]
+					row[4].value = list_appelMedical[i][5]
+					row[5].value = list_appelMedical[i][6]
 				i += 1
 			# mission de adecco
 			i = -1
@@ -599,10 +591,10 @@ def button(update, context):
 					row[0].value = "adecco"
 				else:
 					# mise en forme compréhensible par excel des données
-					row[0].value = dt.strptime(list_adecco[i][1], "%Y/%m/%d").strftime("%d/%m/%Y")
-					row[1].value = list_adecco[i][2]
-					row[4].value = list_adecco[i][3]
-					row[5].value = list_adecco[i][4]
+					row[0].value = dt.strptime(list_adecco[i][3], "%Y/%m/%d").strftime("%d/%m/%Y")
+					row[1].value = list_adecco[i][4]
+					row[4].value = list_adecco[i][5]
+					row[5].value = list_adecco[i][6]
 				i += 1
 			# le chemin temporaire du excel
 			tempPathExcel = os.path.join(BASEPATH, "extrait.xlsx")
@@ -610,19 +602,21 @@ def button(update, context):
 			wb.save(filename=tempPathExcel)
 			# envoit du fichier
 			query.edit_message_text("excel envoyé")
+			print("excel envoyé")
 			context.bot.send_document(chat_id=query.message.chat_id, document=open(tempPathExcel, "rb"))
 			# suppression du excel
 			os.remove(tempPathExcel)
 			# nettoyage de la base de données
 			try:
 				for k in temp:
-					interact_bdd(BDD_PATH, BDD_TABLE, "delete", k[1]) # la clef primaire est en position 1
-					print("deleted :", k[0])
+					with obj_bdd(BDD_PATH, BDD_TABLE) as temp_bdd:
+						temp_bdd.delete(k[0]) # la clef primaire est en position 0
+						print(f"deleted : {bdd_to_string(k, 'recapitulatif')}")
 				# envoi un nouveau message
 				context.bot.send_message(chat_id=query.message.chat_id, text="base de donnée nettoyée")
 			except Exit as e:
 				# réponse pour dire qu'il y a eu une erreur
-				print(e) #context.bot.send_message(chat_id=query.message.chat_id, text=f"code d'erreur : {e}")
+				print("fonction button.export", e) #context.bot.send_message(chat_id=query.message.chat_id, text=f"code d'erreur : {e}")
 
 # affiche l'aide
 def help(update, context):

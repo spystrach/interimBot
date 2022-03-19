@@ -64,3 +64,4 @@ Il faut aussi modifier le chemin ligne 4 de *restartInterimBot.sh*
 - [x] : token d'identitification non hardcodé
 - [x] : integrer un Dockerfile au projet
 - [x] : mieux gérer les mises à jours coté serveur
+- [x] : base de donnée triée selon l'utilisateur
