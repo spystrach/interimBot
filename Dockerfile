@@ -20,7 +20,7 @@ USER interimbot
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
 
-# fichier indispensables du bot
+# fichiers indispensables du bot
 COPY .env ./
 COPY interimBot.py ./
 

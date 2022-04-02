@@ -26,6 +26,8 @@ REGEX_BASEPATH = reCompile("folder=~[a-zA-Z0-9/]+")
 # conserve la base de donnée pendant la mise à jour
 KEEP_DB = True
 DB_FILENAME = "data.db"
+# se connecte en utilisant l'ip plutot que le nom d'hote
+MODE_IP = False
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~         FONCTIONS         ~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
 
@@ -55,23 +57,28 @@ def get_etc_hostnames():
     return dictHosts
 
 # demande l'adresse ip du serveur
-def ask_ip_adress(dns_dict):
+def ask_ip_adress(dns_dict, ip_mode=False):
     ipAddress = None
     # demande si on veut passer par le réseau local ou par internet
     while True:
         local = input("passer par internet (O/N) ? : ")
         if local.lower() == "o":
-            ipAddress = dns_dict["maison"]
+            name = "maison"
             break
         elif local.lower() == "n":
-            ipAddress = dns_dict["raspberry4"]
+            name = "raspberry4"
             break
-    # vérifie que l'adresse ip est bien trouvée
-    if ipAddress:
-        return ipAddress
+    # si on est en mode 'ip'
+    if ip_mode:
+        # vérifie que l'adresse ip est bien trouvée
+        if name in dns_dict:
+            return dns_dict[name]
+        else:
+            print("[!] adresse ip non trouvée dans le DNS")
+            sys.exit()
+    # si on est en mode 'nom d'hôte'
     else:
-        print("[!] adresse ip non trouvée dans le DNS")
-        sys.exit()
+        return name
 
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~    FONCTION PRINCIPALE    ~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
@@ -88,7 +95,7 @@ if __name__ == "__main__":
 
     # récupère les DNS et l'adresse ip
     dns = get_etc_hostnames()
-    ip_address = ask_ip_adress(dns)
+    ip_address = ask_ip_adress(dns, MODE_IP)
     print(f"adresse ip : {ip_address}")
 
     # initialisation du client SSH
