@@ -63,6 +63,10 @@ class obj_bdd():
 	# fonction d'initialisation et de fermeture de la connection
 	def __init__(self, FULLPATH, tableName):
 		try:
+			# si la base de donnée n'existe pas
+			if not os.path.isfile(FULLPATH):
+				with open(FULLPATH, "w+") as f:
+					pass
 			# curseur et connection de la base de donnée
 			self._conn = sqlite3.connect(FULLPATH)
 			self._cursor = self._conn.cursor()
