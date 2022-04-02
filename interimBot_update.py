@@ -18,7 +18,7 @@ from paramiko import SSHClient, RejectPolicy
 from getpass import getpass
 from re import compile as reCompile
 
-# le nom d'utilisateur du serveur et le chemin de musicaBot sont spécifié dans le .env
+# le nom d'utilisateur du serveur et le chemin de interimBot sont spécifié dans le .env
 BASEPATH = os.path.realpath(os.path.dirname(sys.argv[0]))
 REGEX_USERNAME = reCompile("username=[a-zA-Z0-9]{2,30}")
 REGEX_BASEPATH = reCompile("folder=~[a-zA-Z0-9/]+")
@@ -140,7 +140,7 @@ if __name__ == "__main__":
             out, err = stdout.read(), stderr.read()
             verify_no_errs(out, err)
             # reconstuit le docker
-            _, stdout, stderr = ssh_client.exec_command(f"sh {os.path.join(basepath_server, 'restartMusicaBot.sh')}")
+            _, stdout, stderr = ssh_client.exec_command(f"sh {os.path.join(basepath_server, 'restartInterimBot.sh')}")
             out, err = stdout.read(), stderr.read()
             verify_no_errs(out, err)
             # recopie la base de donnée dans le conteneur
