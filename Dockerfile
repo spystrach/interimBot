@@ -1,4 +1,6 @@
-FROM python:3-slim
+# ne fonctionne pas avec bullseye sur raspberry pi
+# FROM python:3.10-slim
+FROM python:3.10-slim-buster
 
 RUN ln -sf /bin/bash /bin/sh
 RUN useradd -ms /bin/bash interimbot
