@@ -1,7 +1,8 @@
+#!/bin/sh
 # RECHARGE LE BOT
 
 # navigue dans le bon dossier
-cd && cd /home/`whoami`/Documents/interimBot
+cd && cd "/home/$(whoami)/Documents/interimBot" || exit
 
 # stopppe le conteneur
 docker stop interim_bot_1
@@ -19,4 +20,4 @@ docker build -t interim_bot .
 docker run -d --name interim_bot_1 interim_bot
 
 # fin
-cd
+cd || exit
