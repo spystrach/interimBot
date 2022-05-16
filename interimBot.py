@@ -76,7 +76,7 @@ class obj_bdd():
 			listeTable = [k[0] for k in self.cursor.fetchall()]
 			# si la table n'existe pas, on la crée
 			if self.tableName not in listeTable:
-				self.cursor.execute(f"CREATE TABLE IF NOT EXISTS '{BDD_TABLE}' ('id' TEXT PRIMARY KEY, 'username' TEXT, 'agence' TEXT, 'date' TEXT, 'lieu' TEXT, 'heure_debut' TEXT, 'heure_fin' TEXT)")
+				self.cursor.execute(f"CREATE TABLE IF NOT EXISTS '{tableName}' ('id' TEXT PRIMARY KEY, 'username' TEXT, 'agence' TEXT, 'date' TEXT, 'lieu' TEXT, 'heure_debut' TEXT, 'heure_fin' TEXT)")
 			# enregistrement de la clef primaire
 			self.primaryKey = None
 			self.cursor.execute(f"PRAGMA table_info({self.tableName})")
